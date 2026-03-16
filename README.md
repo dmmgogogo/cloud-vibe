@@ -1,40 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cloud Vibe
+
+一个基于 Next.js 和 Supabase 构建的 Cursor Cloud Agents Web 仪表板，用于管理和监控 AI 代码助手代理。
+
+A web dashboard built with Next.js and Supabase for managing and monitoring Cursor Cloud Agents (AI code assistant agents).
 
 ## 🌐 Online Access / 在线访问
 
 **Dashboard**: [https://vibe.iamxmm.xyz/dashboard/bc-746e5fb7-eb3a-4381-90b4-3d2d565ced84](https://vibe.iamxmm.xyz/dashboard/bc-746e5fb7-eb3a-4381-90b4-3d2d565ced84)
 
-## Getting Started
+## 主要功能 / Features
 
-First, run the development server:
+- 🔐 **安全的 API 密钥管理** - 使用 Supabase 加密存储 Cursor API 密钥
+- 🤖 **代理管理** - 创建、监控和管理多个 AI 代码助手代理
+- 💬 **对话历史** - 查看代理与代码库的完整对话记录
+- 📁 **文件下载** - 下载代理生成的文件和代码变更
+- 🔖 **书签功能** - 为重要代理添加标签和备注
+- 📦 **仓库缓存** - 智能缓存 GitHub 仓库列表，减少 API 调用
+
+## 技术栈 / Tech Stack
+
+- **前端**: Next.js 16, React 19, TypeScript, Tailwind CSS
+- **后端**: Next.js API Routes
+- **数据库**: Supabase (PostgreSQL)
+- **状态管理**: SWR
+- **认证**: Supabase Auth
+
+## 快速开始 / Quick Start
+
+### 环境变量
+
+创建 `.env.local` 文件：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 运行开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 数据库设置
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+运行 `supabase-migration.sql` 中的 SQL 脚本在 Supabase Dashboard 中创建必要的表结构。
