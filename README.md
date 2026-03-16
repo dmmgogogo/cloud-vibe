@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 🌐 Online Access / 在线访问
+
+**Dashboard**: [https://vibe.iamxmm.xyz/dashboard/bc-746e5fb7-eb3a-4381-90b4-3d2d565ced84](https://vibe.iamxmm.xyz/dashboard/bc-746e5fb7-eb3a-4381-90b4-3d2d565ced84)
+
 ## Getting Started
 
 First, run the development server:
