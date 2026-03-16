@@ -11,8 +11,7 @@ export function NavBar() {
 
   async function handleLogout() {
     await getSupabaseClient().auth.signOut();
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   }
 
   const navItems = [
