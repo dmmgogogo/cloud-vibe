@@ -57,22 +57,18 @@ check_env() {
 
 # 安装 sshpass（如果使用密码认证）
 install_sshpass() {
+    export USE_PYTHON=false
     if [ ! -z "$DEPLOY_PASSWORD" ]; then
         if ! command -v sshpass &> /dev/null; then
-            log_info "安装 sshpass..."
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                # macOS
-                if command -v brew &> /dev/null; then
-                    brew install hudochenkov/sshpass/sshpass
-                else
-                    log_error "请先安装 Homebrew: https://brew.sh"
-                    exit 1
-                fi
-            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-                # Linux
-                sudo apt-get update && sudo apt-get install -y sshpass
+            log_info "sshpass 未安装，使用 Python pexpect 进行密码认证..."
+            # 检查 Python 脚本是否存在
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            SSH_PYTHON_SCRIPT="$SCRIPT_DIR/ssh_with_password.py"
+            if [ -f "$SSH_PYTHON_SCRIPT" ]; then
+                export USE_PYTHON=true
+                log_success "找到 Python SSH 脚本"
             else
-                log_error "不支持的操作系统: $OSTYPE"
+                log_error "需要安装 sshpass 或使用 SSH 密钥认证（设置 DEPLOY_SSH_KEY）"
                 exit 1
             fi
         fi
@@ -88,10 +84,17 @@ remote_exec() {
     
     if [ ! -z "$DEPLOY_PASSWORD" ]; then
         # 使用密码认证
-        sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=10 \
-            "$DEPLOY_USER@$DEPLOY_HOST" "$cmd"
+        if [ "$USE_PYTHON" = "true" ]; then
+            # 使用 Python 脚本
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            python3 "$SCRIPT_DIR/ssh_with_password.py" "$DEPLOY_HOST" "$DEPLOY_USER" "$DEPLOY_PASSWORD" "$cmd"
+        else
+            # 使用 sshpass
+            sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null \
+                -o ConnectTimeout=10 \
+                "$DEPLOY_USER@$DEPLOY_HOST" "$cmd"
+        fi
     else
         # 使用 SSH 密钥认证
         ssh -i "$DEPLOY_SSH_KEY" \
@@ -114,10 +117,17 @@ remote_exec_output() {
     local cmd="$1"
     
     if [ ! -z "$DEPLOY_PASSWORD" ]; then
-        sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=10 \
-            "$DEPLOY_USER@$DEPLOY_HOST" "$cmd"
+        if [ "$USE_PYTHON" = "true" ]; then
+            # 使用 Python 脚本
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            python3 "$SCRIPT_DIR/ssh_with_password.py" "$DEPLOY_HOST" "$DEPLOY_USER" "$DEPLOY_PASSWORD" "$cmd"
+        else
+            # 使用 sshpass
+            sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null \
+                -o ConnectTimeout=10 \
+                "$DEPLOY_USER@$DEPLOY_HOST" "$cmd"
+        fi
     else
         ssh -i "$DEPLOY_SSH_KEY" \
             -o StrictHostKeyChecking=no \
@@ -147,13 +157,40 @@ deploy() {
     log_info "检查服务器环境..."
     remote_exec "node --version && npm --version" "检查 Node.js 环境"
     
-    # 进入项目目录并拉取代码
-    log_info "更新代码..."
-    remote_exec "cd $DEPLOY_PATH && git fetch origin && git reset --hard origin/main" "拉取最新代码"
+    # 检查并初始化 Git 仓库
+    log_info "检查 Git 仓库..."
+    IS_GIT_REPO=$(remote_exec_output "cd $DEPLOY_PATH 2>/dev/null && [ -d .git ] && echo 'yes' || echo 'no'")
+    
+    if [ "$IS_GIT_REPO" != "yes" ]; then
+        log_warning "目录 $DEPLOY_PATH 不是 Git 仓库，正在初始化..."
+        # 检查目录是否存在且非空
+        DIR_EXISTS=$(remote_exec_output "[ -d $DEPLOY_PATH ] && echo 'yes' || echo 'no'")
+        
+        if [ "$DIR_EXISTS" = "yes" ]; then
+            # 目录存在但不是 git 仓库，先备份
+            BACKUP_NAME="${DEPLOY_PATH}.backup.$(date +%s)"
+            log_info "备份现有目录到 $BACKUP_NAME..."
+            remote_exec "cd $(dirname $DEPLOY_PATH) && mv $(basename $DEPLOY_PATH) $(basename $BACKUP_NAME) 2>/dev/null || rm -rf $DEPLOY_PATH" "备份/删除目录"
+        fi
+        
+        # 创建目录并克隆代码
+        log_info "克隆代码仓库..."
+        remote_exec "cd $(dirname $DEPLOY_PATH) && rm -rf $(basename $DEPLOY_PATH) && git clone https://github.com/dmmgogogo/cloud-vibe.git $(basename $DEPLOY_PATH)" "克隆代码"
+    else
+        # 进入项目目录并拉取代码
+        log_info "更新代码..."
+        remote_exec "cd $DEPLOY_PATH && git fetch origin && git reset --hard origin/main" "拉取最新代码"
+    fi
     
     # 安装依赖
     log_info "安装依赖..."
-    remote_exec "cd $DEPLOY_PATH && npm ci" "安装依赖"
+    # 检查是否有 package-lock.json
+    HAS_LOCK=$(remote_exec_output "cd $DEPLOY_PATH && [ -f package-lock.json ] && echo 'yes' || echo 'no'")
+    if [ "$HAS_LOCK" = "yes" ]; then
+        remote_exec "cd $DEPLOY_PATH && npm ci" "安装依赖"
+    else
+        remote_exec "cd $DEPLOY_PATH && npm install" "安装依赖"
+    fi
     
     # 构建项目
     log_info "构建项目..."
@@ -208,6 +245,7 @@ show_help() {
 # 检查状态
 check_status() {
     check_env
+    install_sshpass
     log_info "检查服务器状态..."
     remote_exec_output "pm2 status"
     remote_exec_output "cd $DEPLOY_PATH && git log -1 --oneline"
@@ -216,6 +254,7 @@ check_status() {
 # 查看日志
 view_logs() {
     check_env
+    install_sshpass
     log_info "查看应用日志..."
     remote_exec_output "pm2 logs cloud-vibe --lines 50"
 }
