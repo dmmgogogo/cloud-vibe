@@ -4,13 +4,18 @@
 
 ### 1. 配置环境变量
 
-复制示例文件并填写配置：
+复制示例文件并填写配置（推荐使用 `.env.local`）：
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-编辑 `.env` 文件，填写你的服务器信息：
+编辑 `.env.local` 文件，填写你的服务器信息：
+
+**注意**: 脚本会按以下优先级查找配置文件：
+1. `.env.local` (推荐，与 Next.js 保持一致)
+2. `.env.deploy` (专门用于部署)
+3. `.env` (通用配置)
 
 ```bash
 DEPLOY_HOST=192.168.1.100
@@ -28,7 +33,9 @@ chmod +x deploy.sh deploy-with-env.sh
 
 ### 3. 执行部署
 
-**方式 1: 使用 .env 文件（推荐）**
+**方式 1: 使用环境变量文件（推荐）**
+
+脚本会自动查找 `.env.local`、`.env.deploy` 或 `.env` 文件：
 
 ```bash
 ./deploy-with-env.sh
