@@ -120,14 +120,42 @@ export async function createAgent(
   return res.json();
 }
 
+// 将图片文件转换为 base64
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function sendFollowup(
   apiKey: string,
   id: string,
-  text: string
+  text: string,
+  images?: File[]
 ): Promise<{ id: string }> {
+  let payload: any = { prompt: { text } };
+  
+  // 如果有图片，转换为 base64 并添加到 payload
+  if (images && images.length > 0) {
+    const imageData = await Promise.all(
+      images.map(async (file) => ({
+        data: await fileToBase64(file),
+        mimeType: file.type,
+        filename: file.name,
+      }))
+    );
+    payload.prompt.images = imageData;
+  }
+  
   const res = await cursorFetch(apiKey, `/agents/${id}/followup`, {
     method: "POST",
-    body: JSON.stringify({ prompt: { text } }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Cursor API error: ${res.status}`);
   return res.json();

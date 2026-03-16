@@ -20,7 +20,8 @@ export const TuiTextarea = forwardRef<HTMLTextAreaElement, TuiTextareaProps>(
           className={cn(
             "w-full bg-transparent text-white outline-none border border-white/20",
             "focus:border-white/60 placeholder:text-white/20 caret-white",
-            "font-mono text-sm p-2 resize-none",
+            "font-mono text-sm p-2 resize-none overflow-y-auto",
+            "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent",
             className
           )}
         />
