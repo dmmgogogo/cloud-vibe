@@ -95,34 +95,6 @@ export default function SettingsPage() {
           <ApiKeyForm onSaved={() => mutate()} />
         </div>
       </div>
-
-      {/* SQL Instructions */}
-      <div className="border border-white/10 p-3 text-xs text-white/30 space-y-2">
-        <div className="text-white/50">supabase setup (run in sql editor)</div>
-        <pre className="text-white/20 text-xs overflow-x-auto">{`-- Run these in your Supabase SQL editor:
-
-create table cursor_api_keys (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null,
-  key_name text not null default 'Default',
-  encrypted_key text not null,
-  created_at timestamptz default now(),
-  unique(user_id, key_name)
-);
-alter table cursor_api_keys enable row level security;
-create policy "own keys" on cursor_api_keys
-  for all using (auth.uid() = user_id);
-
-create table repo_cache (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null unique,
-  repositories jsonb not null default '[]',
-  cached_at timestamptz default now()
-);
-alter table repo_cache enable row level security;
-create policy "own cache" on repo_cache
-  for all using (auth.uid() = user_id);`}</pre>
-      </div>
     </div>
   );
 }
