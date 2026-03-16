@@ -60,17 +60,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-lg">
         <div className="border border-white/20 font-mono">
-          <div className="border-b border-white/20 px-4 py-2 text-xs text-white/50">
-            <pre className="text-white/80 text-xs leading-4">{`
-  ____  _                 _ __     _____ _
+          <div className="border-b border-white/20 px-4 py-3 text-xs text-white/50 overflow-hidden">
+            <pre className="text-white/80 leading-4 overflow-x-auto text-[10px] sm:text-xs whitespace-pre">{`  ____  _                 _ __     _____ _
  / ___|| | ___  _   _  __| |\\ \\   / /_ _| |__   ___
 | |    | |/ _ \\| | | |/ _\` | \\ \\ / / | || '_ \\ / _ \\
 | |___ | | (_) | |_| | (_| |  \\ V /  | || |_) |  __/
- \\____||_|\\___/ \\__,_|\\__,_|   \\_/  |___|_.__/ \\___|
-`}</pre>
-            <div className="mt-1 text-white/30">cursor cloud agents manager</div>
+ \\____||_|\\___/ \\__,_|\\__,_|   \\_/  |___|_.__/ \\___|`}</pre>
+            <div className="mt-2 text-white/30">cursor cloud agents manager</div>
           </div>
           <div className="p-4 space-y-4">
             <div className="flex gap-2 text-xs">
