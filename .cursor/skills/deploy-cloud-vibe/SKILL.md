@@ -22,6 +22,23 @@ Read credentials from the project's `.env.local` before deploying:
 
 Required vars: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PASSWORD`, `DEPLOY_PATH`, `DEPLOY_DOMAIN`
 
+## ⚠️ 已知根因 & 防坑规则
+
+### 根因：`client reference manifest does not exist` 崩溃
+
+**场景还原**：服务器上 `.next/` 是旧构建产物，但 git pull 拉下了新代码（新的 Server Component chunk ID），两者不匹配，Next.js 找不到对应的 client manifest，导致所有页面 500。
+
+**为什么会发生**：
+- `.next/` 在 `.gitignore` 中，不随代码一起提交
+- 服务器 `.next/` 不会自动更新，必须每次部署都在服务器上重新 `npm run build`
+- 如果只做了 `git pull` 没有 `npm run build`，就会出现代码与构建产物版本错位
+
+**防复发规则**：
+> **每次 `git pull` 之后必须紧跟 `npm run build && pm2 restart`，三步缺一不可。**
+> 绝对不允许只 `git pull` 不重新构建就重启服务。
+
+---
+
 ## Standard Deploy Flow
 
 ### 1. Local build check
@@ -32,17 +49,27 @@ npm run build
 
 ### 2. Commit & push (if there are uncommitted changes)
 ```bash
-git add -f src/app/ src/components/ src/lib/ src/middleware.ts package.json
+git add -f src/app/ src/components/ src/lib/ src/hooks/ src/middleware.ts package.json
 git commit -m "..."
 git push
 ```
-> Note: `src/app/` is in `.gitignore` — always use `git add -f` for files under it.
+> Note: `src/app/` and `.next/` are in `.gitignore` — always use `git add -f` for files under `src/app/`.
 
-### 3. Deploy to server
+### 3. Sync .env.local to server (首次部署或 .env 变更时必须执行)
 ```bash
-sshpass -p '$DEPLOY_PASSWORD' ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST \
+sshpass -p "$DEPLOY_PASSWORD" scp -o StrictHostKeyChecking=no \
+  /Users/mmx/Documents/work/Github/cloud-vibe/.env.local \
+  $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.local
+```
+> ⚠️ `.env.local` 在 `.gitignore` 中，git pull 不会同步，必须手动上传。
+> 服务器上 `.env.local` 丢失会导致 Supabase 初始化失败，所有请求 500 崩溃。
+
+### 4. Deploy to server (必须包含 build 步骤)
+```bash
+sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST \
   "cd $DEPLOY_PATH && git pull && npm install && npm run build && pm2 restart cloud-vibe && echo DEPLOY_OK"
 ```
+> ⚠️ `git pull` 和 `npm run build` 必须在同一条命令里串联执行，不可分开。
 
 ### 4. Verify
 ```bash
@@ -51,6 +78,23 @@ curl -s --connect-timeout 5 https://vibe.iamxmm.xyz/ -o /dev/null -w "%{http_cod
 ```
 
 ## Troubleshooting
+
+**`.env.local` 丢失 → Supabase 初始化失败 → 所有请求 500**
+```bash
+# 重新上传 .env.local，然后重新构建
+sshpass -p "$DEPLOY_PASSWORD" scp -o StrictHostKeyChecking=no \
+  /Users/mmx/Documents/work/Github/cloud-vibe/.env.local \
+  $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.local
+sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST \
+  "cd $DEPLOY_PATH && npm run build && pm2 restart cloud-vibe"
+```
+
+**`client reference manifest does not exist` / Application error 崩溃**
+```bash
+# 根因：.next 构建产物与代码版本不匹配，必须重新构建
+sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST \
+  "cd $DEPLOY_PATH && npm run build && pm2 restart cloud-vibe"
+```
 
 **git pull fails (untracked files)**
 ```bash
@@ -70,9 +114,9 @@ pm2 restart cloud-vibe
 # If .env.local missing on server, restore it manually
 ```
 
-**SSH connection timeout**
-- Check server is up: `curl -s http://$DEPLOY_HOST -o /dev/null -w "%{http_code}"`
-- Try again — sometimes transient
+**SSH connection timeout (fail2ban 封 IP)**
+- 多次频繁 SSH 连接会触发 fail2ban，等 5-10 分钟后自动解封
+- Check server is up: `curl -s https://vibe.iamxmm.xyz/ -o /dev/null -w "%{http_code}"`
 
 ## Release Version Bump
 
